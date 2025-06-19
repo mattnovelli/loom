@@ -1,0 +1,54 @@
+name: Release
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  ubuntu-latest-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+
+      - name: Checkout submodules
+        run: git submodule update --init --recursive
+
+      - name: update apt
+        run: sudo apt update
+
+      - name: install dependencies
+        run: sudo apt install -y cmake gcc g++ libglpk-dev coinor-cbc coinor-libcbc-dev
+
+      - name: cmake
+        run: mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=Release
+
+      - name: make
+        run: cd build && make
+
+      - name: tests
+        run: cd build && ctest --output-on-failure
+
+      - name: create release directory
+        run: mkdir -p release/bin
+
+      - name: copy executables
+        run: |
+          cd build
+          find . -maxdepth 1 -type f -executable -exec cp {} ../release/bin/ \;
+
+      - name: copy documentation
+        run: |
+          cp README.md release/
+          cp LICENSE release/
+
+      - name: create archive
+        run: |
+          cd release
+          tar -czf ../loom-linux-x64.tar.gz .
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: loom-linux-x64.tar.gz
+          generate_release_notes: true
